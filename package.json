@@ -5,7 +5,7 @@
     "main": "index.ts",
     "license": "MIT",
     "publishConfig": {
-        "registry": "https://github.com/cybernated/web-imap-client"
+        "registry": "https://artifacts.core.arrival.co/repository/ce-frontend/"
     },
     "repository": {
         "type": "git",
