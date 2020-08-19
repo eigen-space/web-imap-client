@@ -1,0 +1,3 @@
+out-tsc/**/*
+dist/**/*
+coverage/**/*
