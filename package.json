@@ -1,0 +1,67 @@
+{
+    "name": "@cybernated/web-imap-client",
+    "version": "0.0.1",
+    "description": "Imap client for fetching emails",
+    "main": "index.ts",
+    "license": "MIT",
+    "publishConfig": {
+        "registry": "https://github.com/cybernated/web-imap-client"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/cybernated/web-imap-client.git"
+    },
+    "scripts": {
+        "build:package": "yarn compile && yarn copy:assets",
+        "build:tsdoc": "typedoc",
+        "compile": "tsc",
+        "copy:assets": "ts-node dev/scripts/copy-assets.ts",
+        "lint:code": "eslint --ext .js,.ts",
+        "lint:fix": "yarn lint:code --fix",
+        "lint:markdown": "node ./node_modules/@eigenspace/codestyle/scripts/markdown-lint.js",
+        "lint": "yarn lint:code . && yarn lint:markdown",
+        "test": "jest --passWithNoTests",
+        "test:ci": "yarn test --ci --coverage",
+        "deploy:publish": "node node_modules/@eigenspace/helper-scripts/scripts/ci/publish.js",
+        "hooks:pre-push": "yarn lint && yarn test",
+        "script:update-deps-local": "node node_modules/@eigenspace/helper-scripts/scripts/project/update-deps.js",
+        "script:update-deps-remote": "npx -p @eigenspace/helper-scripts update-deps"
+    },
+    "husky": {
+        "hooks": {
+            "pre-push": "yarn hooks:pre-push",
+            "pre-commit": "lint-staged",
+            "commit-msg": "commit-linter --message=COMMIT_MESSAGE"
+        }
+    },
+    "lint-staged": {
+        "*.{ts,tsx}": [
+            "yarn lint:fix",
+            "git add"
+        ]
+    },
+    "dependencies": {
+        "imap-simple": "5.0.0",
+        "mailparser": "2.8.1",
+        "tmp": "0.2.1",
+        "ts-node": "8.6.2"
+    },
+    "devDependencies": {
+        "@eigenspace/codestyle": "latest",
+        "@eigenspace/commit-linter": "latest",
+        "@eigenspace/common-types": "0.0.20",
+        "@eigenspace/helper-scripts": "2.0.5-core",
+        "@types/imap-simple": "4.2.2",
+        "@types/jest": "22.2.2",
+        "@types/mailparser": "2.7.3",
+        "@types/tmp": "0.2.0",
+        "eslint": "5.16.0",
+        "eslint-plugin-eigenspace-script": "latest",
+        "husky": "2.3.0",
+        "jest": "24.7.1",
+        "lint-staged": "8.1.7",
+        "ts-jest": "24.0.2",
+        "ts-loader": "6.2.1",
+        "typescript": "3.7.4"
+    }
+}
