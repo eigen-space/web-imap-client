@@ -75,7 +75,15 @@ export class ImapClient {
         return this.imapDataService.search(criteria);
     }
 
-    async addLabel(source: MessageSource, label: string): Promise<void> {
-        return this.imapDataService.addMessageLabel(source, label);
+    async addLabels(source: MessageSource, labels: string | string[]): Promise<void> {
+        return this.imapDataService.addMessageLabels(source, labels);
+    }
+
+    async deleteLabels(source: MessageSource, labels: string | string[]): Promise<void> {
+        return this.imapDataService.deleteMessageLabels(source, labels);
+    }
+
+    async setMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
+        return this.imapDataService.setMessageLabels(source, labels);
     }
 }
