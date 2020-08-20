@@ -11,17 +11,19 @@ interface ImapDataServiceConfig {
 }
 
 export class ImapDataService {
-    private connection: Promise<ImapSimple>;
+    private imapPromise: Promise<ImapSimple>;
     private readonly emailConfig: ImapSimpleOptions;
     private readonly mailBox: string;
 
     constructor(config: ImapDataServiceConfig) {
         this.emailConfig = config.options;
         this.mailBox = config.mailBox;
+
+        this.imapPromise = this.getImap();
     }
 
     async search(criteria: Criteria): Promise<AppMessage[]> {
-        const imapSimple = await this.getConnection();
+        const imapSimple = await this.getImap();
 
         const fetchOptions = { bodies: '', struct: true };
         const imapMessages = await imapSimple.search(criteria, fetchOptions);
@@ -31,15 +33,15 @@ export class ImapDataService {
         return messages.sort((a, b) => a.headers.date - b.headers.date);
     }
 
-    private async getConnection(): Promise<ImapSimple> {
-        if (!this.connection) {
-            return this.connect();
+    private async getImap(): Promise<ImapSimple> {
+        if (!this.imapPromise) {
+            this.imapPromise = this.getConnection();
         }
 
-        return this.connection;
+        return this.imapPromise;
     }
 
-    private async connect(): Promise<ImapSimple> {
+    private async getConnection(): Promise<ImapSimple> {
         const imapSimple = await imap.connect(this.emailConfig);
         await imapSimple.openBox(this.mailBox);
 
