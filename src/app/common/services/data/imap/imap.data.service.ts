@@ -4,6 +4,7 @@ import { AppMessage } from '../../../types/imap/app-message';
 import { AttachmentStream, HeaderValue, MailParser, MessageText } from 'mailparser';
 import { MessageAttachment } from '../../../entities/message-attachment/message-attachment';
 import { Criteria } from '../../../../..';
+import { MessageSource } from '../../../types/imap/imap-data';
 
 interface ImapDataServiceConfig {
     options: ImapSimpleOptions;
@@ -31,6 +32,11 @@ export class ImapDataService {
         const messages = await Promise.all(imapMessages.map(message => this.parseMessage(message)));
         // @ts-ignore
         return messages.sort((a, b) => a.headers.date - b.headers.date);
+    }
+
+    async addMessageLabel(source: MessageSource, label: string): Promise<void> {
+        const imapSimple = await this.getImap();
+        await imapSimple.addMessageLabel(source, label);
     }
 
     private async getImap(): Promise<ImapSimple> {
