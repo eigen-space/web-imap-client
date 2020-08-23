@@ -83,7 +83,7 @@ export class ImapClient {
         return this.imapDataService.deleteMessageLabels(source, labels);
     }
 
-    async setMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
+    async setLabels(source: MessageSource, labels: string | string[]): Promise<void> {
         return this.imapDataService.setMessageLabels(source, labels);
     }
 }
