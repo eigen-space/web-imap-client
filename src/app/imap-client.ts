@@ -1,4 +1,4 @@
-import { Criteria } from './common/types/imap/imap-data';
+import { Criteria, MessageSource } from './common/types/imap/imap-data';
 import { AppMessage } from './common/types/imap/app-message';
 import { ImapDataService } from './common/services/data/imap/imap.data.service';
 import { URL } from 'url';
@@ -73,5 +73,17 @@ export class ImapClient {
 
     async search(criteria: Criteria): Promise<AppMessage[]> {
         return this.imapDataService.search(criteria);
+    }
+
+    async addLabels(source: MessageSource, labels: string | string[]): Promise<void> {
+        return this.imapDataService.addMessageLabels(source, labels);
+    }
+
+    async deleteLabels(source: MessageSource, labels: string | string[]): Promise<void> {
+        return this.imapDataService.deleteMessageLabels(source, labels);
+    }
+
+    async setLabels(source: MessageSource, labels: string | string[]): Promise<void> {
+        return this.imapDataService.setMessageLabels(source, labels);
     }
 }
