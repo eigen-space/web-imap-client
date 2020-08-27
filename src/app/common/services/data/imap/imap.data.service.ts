@@ -1,9 +1,11 @@
 import * as imap from 'imap-simple';
+import * as OriginImap from 'imap';
 import { ImapSimple, ImapSimpleOptions, Message } from 'imap-simple';
 import { AppMessage } from '../../../types/imap/app-message';
 import { AttachmentStream, HeaderValue, MailParser, MessageText } from 'mailparser';
 import { MessageAttachment } from '../../../entities/message-attachment/message-attachment';
 import { Criteria } from '../../../../..';
+import { MessageSource } from '../../../types/imap/imap-data';
 
 interface ImapDataServiceConfig {
     options: ImapSimpleOptions;
@@ -33,12 +35,55 @@ export class ImapDataService {
         return messages.sort((a, b) => a.headers.date - b.headers.date);
     }
 
+    async addMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
+        const imapSimple = await this.getImap();
+        await imapSimple.addMessageLabel(source, labels);
+    }
+
+    async deleteMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
+        const unwrappedImap = await this.getUnwrappedImap();
+
+        return new Promise(function (resolve, reject) {
+            // @ts-ignore
+            unwrappedImap.delLabels(source, labels, function (err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                resolve();
+            });
+        });
+    }
+
+    async setMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
+        const unwrappedImap = await this.getUnwrappedImap();
+
+        return new Promise(function (resolve, reject) {
+            // @ts-ignore
+            unwrappedImap.setLabels(source, labels, function (err) {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                resolve();
+            });
+        });
+    }
+
     private async getImap(): Promise<ImapSimple> {
         if (!this.imapPromise) {
             this.imapPromise = this.getConnection();
         }
 
         return this.imapPromise;
+    }
+
+    private async getUnwrappedImap(): Promise<OriginImap> {
+        const unwrappedImap = await this.getImap();
+        // @ts-ignore
+        return unwrappedImap.imap;
     }
 
     private async getConnection(): Promise<ImapSimple> {
