@@ -1,12 +1,9 @@
 {
-    "name": "@cybernated/web-imap-client",
+    "name": "@eigenspace/web-imap-client",
     "version": "1.0.0",
     "description": "Imap client for fetching emails",
     "main": "index.ts",
     "license": "MIT",
-    "publishConfig": {
-        "registry": "https://artifacts.core.arrival.co/repository/ce-frontend/"
-    },
     "repository": {
         "type": "git",
         "url": "https://github.com/cybernated/web-imap-client.git"
