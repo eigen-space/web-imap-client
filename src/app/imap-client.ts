@@ -2,6 +2,7 @@ import { Criteria, MessageSource } from './common/types/imap/imap-data';
 import { AppMessage } from './common/types/imap/app-message';
 import { ImapDataService } from './common/services/data/imap/imap.data.service';
 import { URL } from 'url';
+import { SendMessageOptions } from './common/types/imap/send-message-options';
 
 interface EmailData {
     user: string;
@@ -69,6 +70,10 @@ export class ImapClient {
 
     get tls(): boolean {
         return this.emailData.tls;
+    }
+
+    async sendMail(options: SendMessageOptions): Promise<void> {
+        return this.imapDataService.sendMail(options);
     }
 
     async search(criteria: Criteria): Promise<AppMessage[]> {
