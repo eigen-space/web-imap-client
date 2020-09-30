@@ -10,6 +10,7 @@ This is email adapter service.
 # Why do we have that dependencies?
 
 * `ts-node` - to run without build typescript.
+* `nodemailer` - to send emails.
 * `tmp` - to temporary create files to upload them to enabler.
 * `imap-simple` - wrapper for imap protocol to fetch emails.
 * `mailparser` - to parse emails.
