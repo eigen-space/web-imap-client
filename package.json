@@ -40,6 +40,7 @@
     "dependencies": {
         "imap-simple": "5.0.0",
         "mailparser": "2.8.1",
+        "nodemailer": "6.4.11",
         "tmp": "0.2.1",
         "ts-node": "8.6.2"
     },
@@ -51,6 +52,7 @@
         "@types/imap-simple": "4.2.2",
         "@types/jest": "22.2.2",
         "@types/mailparser": "2.7.3",
+        "@types/nodemailer": "6.4.0",
         "@types/tmp": "0.2.0",
         "eslint": "5.16.0",
         "eslint-plugin-eigenspace-script": "latest",
