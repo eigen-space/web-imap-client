@@ -1,0 +1,22 @@
+if: branch =~ ^(master|dev|feature\/.*)$ AND commit_message !~ /auto\/ci:\sset\sversion/
+language: node_js
+node_js:
+  - "11.10"
+git:
+  depth: false
+cache:
+  directories:
+    - node_modules
+script:
+  - git checkout $TRAVIS_BRANCH
+  - git remote set-url origin https://$USER:$GITHUB_API_KEY@github.com/eigen-space/helper-scripts.git
+  - yarn lint && yarn build:package && yarn test:ci && npm run deploy:publish;
+before_install:
+  - echo "registry=https://$REGISTRY/" >> .npmrc
+  - echo "//$REGISTRY/:_authToken=$ACCESS_TOKEN" >> .npmrc
+notifications:
+  slack:
+    rooms:
+      - eigenspaceworkspace:kmQErenC9R4KA4kWyb1j8UaS#ci
+    on_success: change
+    on_failure: always
