@@ -4,10 +4,6 @@
     "description": "Imap client for fetching emails",
     "main": "index.ts",
     "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/cybernated/web-imap-client.git"
-    },
     "scripts": {
         "build:package": "yarn compile && yarn copy:assets",
         "build:tsdoc": "typedoc",
