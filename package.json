@@ -4,10 +4,6 @@
     "description": "Imap client for fetching emails",
     "main": "index.ts",
     "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/cybernated/web-imap-client.git"
-    },
     "scripts": {
         "build:package": "yarn compile && yarn copy:assets",
         "build:tsdoc": "typedoc",
@@ -40,8 +36,8 @@
     "dependencies": {
         "imap-simple": "5.0.0",
         "mailparser": "2.8.1",
-        "tmp": "0.2.1",
-        "ts-node": "8.6.2"
+        "nodemailer": "6.4.11",
+        "tmp": "0.2.1"
     },
     "devDependencies": {
         "@eigenspace/codestyle": "latest",
@@ -51,12 +47,14 @@
         "@types/imap-simple": "4.2.2",
         "@types/jest": "22.2.2",
         "@types/mailparser": "2.7.3",
+        "@types/nodemailer": "6.4.0",
         "@types/tmp": "0.2.0",
         "eslint": "5.16.0",
         "eslint-plugin-eigenspace-script": "latest",
         "husky": "2.3.0",
         "jest": "24.7.1",
         "lint-staged": "8.1.7",
+        "ts-node": "8.6.2",
         "ts-jest": "24.0.2",
         "ts-loader": "6.2.1",
         "typescript": "3.7.4"
