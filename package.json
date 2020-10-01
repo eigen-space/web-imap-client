@@ -41,8 +41,7 @@
         "imap-simple": "5.0.0",
         "mailparser": "2.8.1",
         "nodemailer": "6.4.11",
-        "tmp": "0.2.1",
-        "ts-node": "8.6.2"
+        "tmp": "0.2.1"
     },
     "devDependencies": {
         "@eigenspace/codestyle": "latest",
@@ -59,6 +58,7 @@
         "husky": "2.3.0",
         "jest": "24.7.1",
         "lint-staged": "8.1.7",
+        "ts-node": "8.6.2",
         "ts-jest": "24.0.2",
         "ts-loader": "6.2.1",
         "typescript": "3.7.4"
