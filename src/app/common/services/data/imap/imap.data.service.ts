@@ -1,11 +1,14 @@
 import * as imap from 'imap-simple';
-import * as OriginImap from 'imap';
 import { ImapSimple, ImapSimpleOptions, Message } from 'imap-simple';
+import * as nodemailer from 'nodemailer';
+import * as OriginImap from 'imap';
 import { AppMessage } from '../../../types/imap/app-message';
 import { AttachmentStream, HeaderValue, MailParser, MessageText } from 'mailparser';
 import { MessageAttachment } from '../../../entities/message-attachment/message-attachment';
 import { Criteria } from '../../../../..';
 import { MessageSource } from '../../../types/imap/imap-data';
+import { SendMessageOptions } from '../../../types/imap/send-message-options';
+import * as Mail from 'nodemailer/lib/mailer';
 
 interface ImapDataServiceConfig {
     options: ImapSimpleOptions;
@@ -16,12 +19,25 @@ export class ImapDataService {
     private imapPromise: Promise<ImapSimple>;
     private readonly emailConfig: ImapSimpleOptions;
     private readonly mailBox: string;
+    private readonly transporter: Mail;
 
     constructor(config: ImapDataServiceConfig) {
         this.emailConfig = config.options;
         this.mailBox = config.mailBox;
 
+        this.transporter = nodemailer.createTransport({
+            host: this.emailConfig.imap.host!.replace('imap', 'smtp'),
+            port: this.emailConfig.imap.tls ? 465 : 587,
+            auth: {
+                user: this.emailConfig.imap.user,
+                pass: this.emailConfig.imap.password
+            }
+        });
         this.imapPromise = this.getImap();
+    }
+
+    async sendMail(options: SendMessageOptions): Promise<void> {
+        return this.transporter.sendMail(options);
     }
 
     async search(criteria: Criteria): Promise<AppMessage[]> {
