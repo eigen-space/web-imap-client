@@ -1,5 +1,5 @@
 import { HeaderValue } from 'mailparser';
-import { MessageAttachment } from '../../entities/message-attachment/message-attachment';
+import { MessageAttachment } from '../../..';
 
 interface MessageInfo {
     uid: number;

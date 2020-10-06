@@ -237,6 +237,11 @@
   dependencies:
     "@eigenspace/argument-parser" "1.0.2"
 
+"@eigenspace/utils@1.2.40":
+  version "1.2.40"
+  resolved "https://artifacts.core.arrival.co/repository/all-npm/@eigenspace/utils/-/utils-1.2.40.tgz#383c7828fed41443901b93582229963a5b1d21df"
+  integrity sha512-M+jRP/YO21MHN0yk8tx2CoVGfnNc4u5JBCLqBy1kjdChHTyD2v3aj/t+cxiW5p9w8yY7P/jh365MlYNdI9iNlw==
+
 "@jest/console@^24.7.1", "@jest/console@^24.9.0":
   version "24.9.0"
   resolved "https://registry.yarnpkg.com/@jest/console/-/console-24.9.0.tgz#79b1bc06fb74a8cfb01cbdedf945584b1b9707f0"
@@ -432,7 +437,7 @@
 
 "@types/imap-simple@4.2.2":
   version "4.2.2"
-  resolved "https://registry.yarnpkg.com/@types/imap-simple/-/imap-simple-4.2.2.tgz#b5aa8ea4329a095ed8bee72914f942013e932bc4"
+  resolved "https://artifacts.core.arrival.co/repository/all-npm/@types/imap-simple/-/imap-simple-4.2.2.tgz#b5aa8ea4329a095ed8bee72914f942013e932bc4"
   integrity sha512-NwFYkMr9KvRtj2vYjo/966nDDHe/wPaEKcol0jUM8LMYqhD/dZKylm2TExSE98pX+q7Jnox80JxsnPP0/pEG/Q==
   dependencies:
     "@types/imap" "*"

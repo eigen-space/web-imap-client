@@ -1,14 +1,14 @@
 import * as imap from 'imap-simple';
-import { ImapSimple, ImapSimpleOptions, Message } from 'imap-simple';
+import { ImapSimpleOptions, Message } from 'imap-simple';
 import * as nodemailer from 'nodemailer';
 import * as OriginImap from 'imap';
-import { AppMessage } from '../../../types/imap/app-message';
 import { AttachmentStream, HeaderValue, MailParser, MessageText } from 'mailparser';
-import { MessageAttachment } from '../../../entities/message-attachment/message-attachment';
-import { Criteria } from '../../../../..';
-import { MessageSource } from '../../../types/imap/imap-data';
-import { SendMessageOptions } from '../../../types/imap/send-message-options';
+import { Criteria, MessageSource } from '../../../types/imap-data';
 import * as Mail from 'nodemailer/lib/mailer';
+import { Logger, LoggingLevelType } from '@eigenspace/utils';
+import { ExtendedImapClient } from '../../../types/extended-imap-client';
+import { GmailOriginImapClient } from '../../../types/gmail-origin-imap-client';
+import { AppMessage, MessageAttachment, SendMessageOptions } from '../../../../..';
 
 interface ImapDataServiceConfig {
     options: ImapSimpleOptions;
@@ -16,10 +16,12 @@ interface ImapDataServiceConfig {
 }
 
 export class ImapDataService {
-    private imapPromise: Promise<ImapSimple>;
+    private imapClientPromise: Promise<ExtendedImapClient>;
     private readonly emailConfig: ImapSimpleOptions;
     private readonly mailBox: string;
     private readonly transporter: Mail;
+
+    private logger = new Logger({ logLevel: LoggingLevelType.DEBUG, prefix: 'ImapDataService' });
 
     constructor(config: ImapDataServiceConfig) {
         this.emailConfig = config.options;
@@ -33,7 +35,7 @@ export class ImapDataService {
                 pass: this.emailConfig.imap.password
             }
         });
-        this.imapPromise = this.getImap();
+        this.imapClientPromise = this.getImapClient();
     }
 
     async sendMail(options: SendMessageOptions): Promise<void> {
@@ -41,27 +43,29 @@ export class ImapDataService {
     }
 
     async search(criteria: Criteria): Promise<AppMessage[]> {
-        const imapSimple = await this.getImap();
+        const imapSimple = await this.getImapClient();
 
         const fetchOptions = { bodies: '', struct: true };
         const imapMessages = await imapSimple.search(criteria, fetchOptions);
 
         const messages = await Promise.all(imapMessages.map(message => this.parseMessage(message)));
-        // @ts-ignore
-        return messages.sort((a, b) => a.headers.date - b.headers.date);
+        return messages.sort((a, b) => Number(a.headers.date) - Number(b.headers.date));
     }
 
     async addMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
-        const imapSimple = await this.getImap();
+        const imapSimple = await this.getImapClient();
         await imapSimple.addMessageLabel(source, labels);
     }
 
     async deleteMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
         const unwrappedImap = await this.getUnwrappedImap();
 
+        if (typeof (unwrappedImap as GmailOriginImapClient).delLabels !== 'function') {
+            throw new Error('Removing labels is unsupported');
+        }
+
         return new Promise(function (resolve, reject) {
-            // @ts-ignore
-            unwrappedImap.delLabels(source, labels, function (err) {
+            (unwrappedImap as GmailOriginImapClient).delLabels(source, labels, function (err) {
                 if (err) {
                     reject(err);
                     return;
@@ -75,9 +79,12 @@ export class ImapDataService {
     async setMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
         const unwrappedImap = await this.getUnwrappedImap();
 
+        if (typeof (unwrappedImap as GmailOriginImapClient).delLabels !== 'function') {
+            throw new Error('Setting labels is unsupported');
+        }
+
         return new Promise(function (resolve, reject) {
-            // @ts-ignore
-            unwrappedImap.setLabels(source, labels, function (err) {
+            (unwrappedImap as GmailOriginImapClient).setLabels(source, labels, function (err) {
                 if (err) {
                     reject(err);
                     return;
@@ -88,25 +95,43 @@ export class ImapDataService {
         });
     }
 
-    private async getImap(): Promise<ImapSimple> {
-        if (!this.imapPromise) {
-            this.imapPromise = this.getConnection();
+    // Flag `safely` determines behaviour which immediately closes connections and interrupts sending request in the queue
+    async disconnect(safely = true): Promise<void> {
+        const unwrappedImap = await this.getUnwrappedImap();
+        unwrappedImap.closeBox(err => {
+            if (err) {
+                this.logger.log(err);
+                return;
+            }
+        });
+
+        if (safely) {
+            const client = await this.getImapClient();
+            client.end();
+            return;
         }
 
-        return this.imapPromise;
+        unwrappedImap.destroy();
     }
 
-    private async getUnwrappedImap(): Promise<OriginImap> {
-        const unwrappedImap = await this.getImap();
-        // @ts-ignore
+    private async getImapClient(): Promise<ExtendedImapClient> {
+        if (!this.imapClientPromise) {
+            this.imapClientPromise = this.getConnection();
+        }
+
+        return this.imapClientPromise;
+    }
+
+    private async getUnwrappedImap(): Promise<OriginImap | GmailOriginImapClient> {
+        const unwrappedImap = await this.getImapClient();
         return unwrappedImap.imap;
     }
 
-    private async getConnection(): Promise<ImapSimple> {
+    private async getConnection(): Promise<ExtendedImapClient> {
         const imapSimple = await imap.connect(this.emailConfig);
         await imapSimple.openBox(this.mailBox);
 
-        return imapSimple;
+        return imapSimple as ExtendedImapClient;
     }
 
     private parseMessage(imapMessage: Message): Promise<AppMessage> {
