@@ -53,6 +53,10 @@ export class ImapClient {
         this.imapDataService = this.createImapService();
     }
 
+    get user(): string {
+        return this.connectionConfig.user;
+    }
+
     async sendMail(options: SendMessageOptions): Promise<void> {
         return this.imapDataService.sendMail(options);
     }
