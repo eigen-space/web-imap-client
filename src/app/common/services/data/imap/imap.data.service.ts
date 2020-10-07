@@ -8,18 +8,27 @@ import * as Mail from 'nodemailer/lib/mailer';
 import { Logger, LoggingLevelType } from '@eigenspace/utils';
 import { ExtendedImapClient } from '../../../types/extended-imap-client';
 import { GmailOriginImapClient } from '../../../types/gmail-origin-imap-client';
-import { AppMessage, MessageAttachment, SendMessageOptions } from '../../../../..';
+import { AppMessage, MessageAttachment, SendMessageOptions, ImapError } from '../../../../..';
 
 interface ImapDataServiceConfig {
     options: ImapSimpleOptions;
     mailBox: string;
 }
 
+export type NewEmailHandler = (numberOfNewMessages: number) => void | Promise<void>;
+export type ErrorHandler = (error: ImapError) => void | Promise<void>;
+export type Unsubscriber = () => {};
+
 export class ImapDataService {
     private imapClientPromise: Promise<ExtendedImapClient>;
     private readonly emailConfig: ImapSimpleOptions;
     private readonly mailBox: string;
     private readonly transporter: Mail;
+
+    // To have possibility reconnecting without any problem with subscribers.
+    // We could get them from imap listeners but it contains not only our subscribers.
+    private mailHandlers: NewEmailHandler[] = [];
+    private errorHandlers: ErrorHandler[] = [];
 
     private logger = new Logger({ logLevel: LoggingLevelType.DEBUG, prefix: 'ImapDataService' });
 
@@ -45,8 +54,8 @@ export class ImapDataService {
     async search(criteria: Criteria): Promise<AppMessage[]> {
         const imapSimple = await this.getImapClient();
 
-        const fetchOptions = { bodies: '', struct: true };
-        const imapMessages = await imapSimple.search(criteria, fetchOptions);
+        const defaultFetchOptions = { bodies: '', struct: true };
+        const imapMessages = await imapSimple.search(criteria, defaultFetchOptions);
 
         const messages = await Promise.all(imapMessages.map(message => this.parseMessage(message)));
         return messages.sort((a, b) => Number(a.headers.date) - Number(b.headers.date));
@@ -98,6 +107,11 @@ export class ImapDataService {
     // Flag `safely` determines behaviour which immediately closes connections and interrupts sending request in the queue
     async disconnect(safely = true): Promise<void> {
         const unwrappedImap = await this.getUnwrappedImap();
+
+        unwrappedImap.removeAllListeners();
+        this.mailHandlers = [];
+        this.errorHandlers = [];
+
         unwrappedImap.closeBox(err => {
             if (err) {
                 this.logger.log(err);
@@ -114,17 +128,63 @@ export class ImapDataService {
         unwrappedImap.destroy();
     }
 
-    private async getImapClient(): Promise<ExtendedImapClient> {
-        if (!this.imapClientPromise) {
+    async reconnect(safely = true): Promise<void> {
+        const mailListeners = [...this.mailHandlers];
+        const errorListeners = [...this.errorHandlers];
+
+        await this.disconnect(safely);
+
+        this.imapClientPromise = this.getImapClient(true);
+
+        mailListeners.forEach(l => this.onNewMailReceived(l));
+        errorListeners.forEach(l => this.onError(l));
+    }
+
+    async onNewMailReceived(handler: NewEmailHandler): Promise<Unsubscriber> {
+        const unwrappedImap = await this.getUnwrappedImap();
+        unwrappedImap.on('mail', handler);
+
+        // This part emulates default behavior of onNewMail callback on imap-simple lib
+        // However, it was moved her to have a possibility to subscribe to getting messages not only when you create client.
+        const criteria = ['ALL'];
+        const newMessages = await this.search(criteria);
+        if (newMessages.length) {
+            unwrappedImap.emit('mail', newMessages.length);
+        }
+
+        this.mailHandlers.push(handler);
+
+        return () => {
+            this.mailHandlers = this.mailHandlers.filter(h => h !== handler);
+            return unwrappedImap.off('mail', handler);
+        };
+    }
+
+    // This event will be fired with some unexpected error or ECONNRESET, when a server closes the connection.
+    // Otherwise, the connection to service supported by keepalive policy.
+    async onError(handler: ErrorHandler): Promise<Unsubscriber> {
+        const client = await this.getImapClient();
+        client.on('error', handler);
+
+        this.errorHandlers.push(handler);
+
+        return () => {
+            this.errorHandlers = this.errorHandlers.filter(h => h !== handler);
+            return client.off('error', handler);
+        };
+    }
+
+    async getUnwrappedImap(): Promise<OriginImap | GmailOriginImapClient> {
+        const unwrappedImap = await this.getImapClient();
+        return unwrappedImap.imap;
+    }
+
+    private async getImapClient(shouldBeCreatedNew = false): Promise<ExtendedImapClient> {
+        if (!this.imapClientPromise || shouldBeCreatedNew) {
             this.imapClientPromise = this.getConnection();
         }
 
         return this.imapClientPromise;
-    }
-
-    private async getUnwrappedImap(): Promise<OriginImap | GmailOriginImapClient> {
-        const unwrappedImap = await this.getImapClient();
-        return unwrappedImap.imap;
     }
 
     private async getConnection(): Promise<ExtendedImapClient> {
