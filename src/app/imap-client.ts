@@ -1,75 +1,56 @@
-import { Criteria, MessageSource } from './common/types/imap/imap-data';
-import { AppMessage } from './common/types/imap/app-message';
-import { ImapDataService } from './common/services/data/imap/imap.data.service';
+import { Criteria, MessageSource } from './common/types/imap-data';
+import { AppMessage } from './common/types/app-message';
+import {
+    ErrorHandler,
+    ImapDataService,
+    NewEmailHandler,
+    Unsubscriber
+} from './common/services/data/imap/imap.data.service';
 import { URL } from 'url';
-import { SendMessageOptions } from './common/types/imap/send-message-options';
+import { SendMessageOptions } from './common/types/send-message-options';
+import { Logger, LoggingLevelType } from '@eigenspace/utils';
 
-interface EmailData {
+interface ConnectionConfig {
     user: string;
     password: string;
     host: string;
     mailBox: string;
     port: number;
     tls: boolean;
+    onNewEmail?: (numberOfNewMessages: number) => void | Promise<void>;
+    debug?: (info: string) => void;
 }
 
 interface EmailConfig {
     url: string;
     mailBox?: string;
     onNewEmail?: (numberOfNewMessages: number) => void | Promise<void>;
+    isDebugMode?: boolean;
 }
 
 export class ImapClient {
     private imapDataService: ImapDataService;
-    private readonly emailData = {} as EmailData;
+    private readonly connectionConfig: ConnectionConfig;
+
+    private logger = new Logger({ logLevel: LoggingLevelType.DEBUG, prefix: 'ImapClient' });
 
     constructor(config: EmailConfig) {
         const url = new URL(config.url);
-
         const tls = url.protocol === 'imaps:';
-        this.emailData = {
+        const noop = (): void => {};
+
+        this.connectionConfig = {
             user: decodeURIComponent(url.username),
             password: decodeURIComponent(url.password),
             host: url.hostname,
             port: url.port || tls ? 993 : 143,
             mailBox: config.mailBox || 'INBOX',
-            tls
-        };
-        const emailConfig = {
-            imap: {
-                ...this.emailData,
-                tlsOptions: { rejectUnauthorized: false },
-                authTimeout: 3000
-            },
-            onmail: config.onNewEmail || (() => {
-            })
+            tls,
+            onNewEmail: config.onNewEmail || noop,
+            debug: config.isDebugMode ? info => this.logger.log(info) : undefined
         };
 
-        this.imapDataService = new ImapDataService({ options: emailConfig, mailBox: this.mailBox });
-    }
-
-    get user(): string {
-        return this.emailData.user;
-    }
-
-    get password(): string {
-        return this.emailData.password;
-    }
-
-    get host(): string {
-        return this.emailData.host;
-    }
-
-    get mailBox(): string {
-        return this.emailData.mailBox;
-    }
-
-    get port(): number {
-        return this.emailData.port;
-    }
-
-    get tls(): boolean {
-        return this.emailData.tls;
+        this.imapDataService = this.createImapService();
     }
 
     async sendMail(options: SendMessageOptions): Promise<void> {
@@ -90,5 +71,35 @@ export class ImapClient {
 
     async setLabels(source: MessageSource, labels: string | string[]): Promise<void> {
         return this.imapDataService.setMessageLabels(source, labels);
+    }
+
+    async disconnect(safely = true): Promise<void> {
+        return this.imapDataService.disconnect(safely);
+    }
+
+    async reconnect(safely = true): Promise<void> {
+        return this.imapDataService.reconnect(safely);
+    }
+
+    async onNewMailReceived(handler: NewEmailHandler): Promise<Unsubscriber> {
+        return this.imapDataService.onNewMailReceived(handler);
+    }
+
+    async onError(handler: ErrorHandler): Promise<Unsubscriber> {
+        return this.imapDataService.onError(handler);
+    }
+
+    private createImapService(): ImapDataService {
+        const { onNewEmail, ...otherOptions } = this.connectionConfig;
+        const options = {
+            imap: {
+                ...otherOptions,
+                tlsOptions: { rejectUnauthorized: false },
+                authTimeout: 3000
+            },
+            onmail: onNewEmail
+        };
+
+        return new ImapDataService({ options, mailBox: this.connectionConfig.mailBox });
     }
 }
