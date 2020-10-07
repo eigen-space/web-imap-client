@@ -1,8 +1,14 @@
 import { Criteria, MessageSource } from './common/types/imap-data';
 import { AppMessage } from './common/types/app-message';
-import { ImapDataService } from './common/services/data/imap/imap.data.service';
+import {
+    ErrorHandler,
+    ImapDataService,
+    NewEmailHandler,
+    Unsubscriber
+} from './common/services/data/imap/imap.data.service';
 import { URL } from 'url';
 import { SendMessageOptions } from './common/types/send-message-options';
+import { Logger, LoggingLevelType } from '@eigenspace/utils';
 
 interface ConnectionConfig {
     user: string;
@@ -12,17 +18,21 @@ interface ConnectionConfig {
     port: number;
     tls: boolean;
     onNewEmail?: (numberOfNewMessages: number) => void | Promise<void>;
+    debug?: (info: string) => void;
 }
 
 interface EmailConfig {
     url: string;
     mailBox?: string;
     onNewEmail?: (numberOfNewMessages: number) => void | Promise<void>;
+    isDebugMode?: boolean;
 }
 
 export class ImapClient {
     private imapDataService: ImapDataService;
     private readonly connectionConfig: ConnectionConfig;
+
+    private logger = new Logger({ logLevel: LoggingLevelType.DEBUG, prefix: 'ImapClient' });
 
     constructor(config: EmailConfig) {
         const url = new URL(config.url);
@@ -36,7 +46,8 @@ export class ImapClient {
             port: url.port || tls ? 993 : 143,
             mailBox: config.mailBox || 'INBOX',
             tls,
-            onNewEmail: config.onNewEmail || noop
+            onNewEmail: config.onNewEmail || noop,
+            debug: config.isDebugMode ? info => this.logger.log(info) : undefined
         };
 
         this.imapDataService = this.createImapService();
@@ -67,8 +78,15 @@ export class ImapClient {
     }
 
     async reconnect(safely = true): Promise<void> {
-        await this.disconnect(safely);
-        this.imapDataService = this.createImapService();
+        return this.imapDataService.reconnect(safely);
+    }
+
+    async onNewMailReceived(handler: NewEmailHandler): Promise<Unsubscriber> {
+        return this.imapDataService.onNewMailReceived(handler);
+    }
+
+    async onError(handler: ErrorHandler): Promise<Unsubscriber> {
+        return this.imapDataService.onError(handler);
     }
 
     private createImapService(): ImapDataService {
