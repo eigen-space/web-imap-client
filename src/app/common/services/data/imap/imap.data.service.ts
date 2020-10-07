@@ -1,25 +1,36 @@
 import * as imap from 'imap-simple';
-import { ImapSimple, ImapSimpleOptions, Message } from 'imap-simple';
+import { ImapSimpleOptions, Message } from 'imap-simple';
 import * as nodemailer from 'nodemailer';
 import * as OriginImap from 'imap';
-import { AppMessage } from '../../../types/imap/app-message';
 import { AttachmentStream, HeaderValue, MailParser, MessageText } from 'mailparser';
-import { MessageAttachment } from '../../../entities/message-attachment/message-attachment';
-import { Criteria } from '../../../../..';
-import { MessageSource } from '../../../types/imap/imap-data';
-import { SendMessageOptions } from '../../../types/imap/send-message-options';
+import { Criteria, MessageSource } from '../../../types/imap-data';
 import * as Mail from 'nodemailer/lib/mailer';
+import { Logger, LoggingLevelType } from '@eigenspace/utils';
+import { ExtendedImapClient } from '../../../types/extended-imap-client';
+import { GmailOriginImapClient } from '../../../types/gmail-origin-imap-client';
+import { AppMessage, MessageAttachment, SendMessageOptions, ImapError } from '../../../../..';
 
 interface ImapDataServiceConfig {
     options: ImapSimpleOptions;
     mailBox: string;
 }
 
+export type NewEmailHandler = (numberOfNewMessages: number) => void | Promise<void>;
+export type ErrorHandler = (error: ImapError) => void | Promise<void>;
+export type Unsubscriber = () => {};
+
 export class ImapDataService {
-    private imapPromise: Promise<ImapSimple>;
+    private imapClientPromise: Promise<ExtendedImapClient>;
     private readonly emailConfig: ImapSimpleOptions;
     private readonly mailBox: string;
     private readonly transporter: Mail;
+
+    // To have possibility reconnecting without any problem with subscribers.
+    // We could get them from imap listeners but it contains not only our subscribers.
+    private mailHandlers: NewEmailHandler[] = [];
+    private errorHandlers: ErrorHandler[] = [];
+
+    private logger = new Logger({ logLevel: LoggingLevelType.DEBUG, prefix: 'ImapDataService' });
 
     constructor(config: ImapDataServiceConfig) {
         this.emailConfig = config.options;
@@ -33,7 +44,7 @@ export class ImapDataService {
                 pass: this.emailConfig.imap.password
             }
         });
-        this.imapPromise = this.getImap();
+        this.imapClientPromise = this.getImapClient();
     }
 
     async sendMail(options: SendMessageOptions): Promise<void> {
@@ -41,27 +52,29 @@ export class ImapDataService {
     }
 
     async search(criteria: Criteria): Promise<AppMessage[]> {
-        const imapSimple = await this.getImap();
+        const imapSimple = await this.getImapClient();
 
-        const fetchOptions = { bodies: '', struct: true };
-        const imapMessages = await imapSimple.search(criteria, fetchOptions);
+        const defaultFetchOptions = { bodies: '', struct: true };
+        const imapMessages = await imapSimple.search(criteria, defaultFetchOptions);
 
         const messages = await Promise.all(imapMessages.map(message => this.parseMessage(message)));
-        // @ts-ignore
-        return messages.sort((a, b) => a.headers.date - b.headers.date);
+        return messages.sort((a, b) => Number(a.headers.date) - Number(b.headers.date));
     }
 
     async addMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
-        const imapSimple = await this.getImap();
+        const imapSimple = await this.getImapClient();
         await imapSimple.addMessageLabel(source, labels);
     }
 
     async deleteMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
         const unwrappedImap = await this.getUnwrappedImap();
 
+        if (typeof (unwrappedImap as GmailOriginImapClient).delLabels !== 'function') {
+            throw new Error('Removing labels is unsupported');
+        }
+
         return new Promise(function (resolve, reject) {
-            // @ts-ignore
-            unwrappedImap.delLabels(source, labels, function (err) {
+            (unwrappedImap as GmailOriginImapClient).delLabels(source, labels, function (err) {
                 if (err) {
                     reject(err);
                     return;
@@ -75,9 +88,12 @@ export class ImapDataService {
     async setMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
         const unwrappedImap = await this.getUnwrappedImap();
 
+        if (typeof (unwrappedImap as GmailOriginImapClient).delLabels !== 'function') {
+            throw new Error('Setting labels is unsupported');
+        }
+
         return new Promise(function (resolve, reject) {
-            // @ts-ignore
-            unwrappedImap.setLabels(source, labels, function (err) {
+            (unwrappedImap as GmailOriginImapClient).setLabels(source, labels, function (err) {
                 if (err) {
                     reject(err);
                     return;
@@ -88,25 +104,94 @@ export class ImapDataService {
         });
     }
 
-    private async getImap(): Promise<ImapSimple> {
-        if (!this.imapPromise) {
-            this.imapPromise = this.getConnection();
+    // Flag `safely` determines behaviour which immediately closes connections and interrupts sending request in the queue
+    async disconnect(safely = true): Promise<void> {
+        const unwrappedImap = await this.getUnwrappedImap();
+
+        unwrappedImap.removeAllListeners();
+        this.mailHandlers = [];
+        this.errorHandlers = [];
+
+        unwrappedImap.closeBox(err => {
+            if (err) {
+                this.logger.log(err);
+                return;
+            }
+        });
+
+        if (safely) {
+            const client = await this.getImapClient();
+            client.end();
+            return;
         }
 
-        return this.imapPromise;
+        unwrappedImap.destroy();
     }
 
-    private async getUnwrappedImap(): Promise<OriginImap> {
-        const unwrappedImap = await this.getImap();
-        // @ts-ignore
+    async reconnect(safely = true): Promise<void> {
+        const mailListeners = [...this.mailHandlers];
+        const errorListeners = [...this.errorHandlers];
+
+        await this.disconnect(safely);
+
+        this.imapClientPromise = this.getImapClient(true);
+
+        mailListeners.forEach(l => this.onNewMailReceived(l));
+        errorListeners.forEach(l => this.onError(l));
+    }
+
+    async onNewMailReceived(handler: NewEmailHandler): Promise<Unsubscriber> {
+        const unwrappedImap = await this.getUnwrappedImap();
+        unwrappedImap.on('mail', handler);
+
+        // This part emulates default behavior of onNewMail callback on imap-simple lib
+        // However, it was moved her to have a possibility to subscribe to getting messages not only when you create client.
+        const criteria = ['ALL'];
+        const newMessages = await this.search(criteria);
+        if (newMessages.length) {
+            unwrappedImap.emit('mail', newMessages.length);
+        }
+
+        this.mailHandlers.push(handler);
+
+        return () => {
+            this.mailHandlers = this.mailHandlers.filter(h => h !== handler);
+            return unwrappedImap.off('mail', handler);
+        };
+    }
+
+    // This event will be fired with some unexpected error or ECONNRESET, when a server closes the connection.
+    // Otherwise, the connection to service supported by keepalive policy.
+    async onError(handler: ErrorHandler): Promise<Unsubscriber> {
+        const client = await this.getImapClient();
+        client.on('error', handler);
+
+        this.errorHandlers.push(handler);
+
+        return () => {
+            this.errorHandlers = this.errorHandlers.filter(h => h !== handler);
+            return client.off('error', handler);
+        };
+    }
+
+    async getUnwrappedImap(): Promise<OriginImap | GmailOriginImapClient> {
+        const unwrappedImap = await this.getImapClient();
         return unwrappedImap.imap;
     }
 
-    private async getConnection(): Promise<ImapSimple> {
+    private async getImapClient(shouldBeCreatedNew = false): Promise<ExtendedImapClient> {
+        if (!this.imapClientPromise || shouldBeCreatedNew) {
+            this.imapClientPromise = this.getConnection();
+        }
+
+        return this.imapClientPromise;
+    }
+
+    private async getConnection(): Promise<ExtendedImapClient> {
         const imapSimple = await imap.connect(this.emailConfig);
         await imapSimple.openBox(this.mailBox);
 
-        return imapSimple;
+        return imapSimple as ExtendedImapClient;
     }
 
     private parseMessage(imapMessage: Message): Promise<AppMessage> {
