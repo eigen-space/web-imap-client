@@ -8,7 +8,7 @@ import * as Mail from 'nodemailer/lib/mailer';
 import { Logger, LoggingLevelType } from '@eigenspace/utils';
 import { ExtendedImapClient } from '../../../types/extended-imap-client';
 import { GmailOriginImapClient } from '../../../types/gmail-origin-imap-client';
-import { AppMessage, MessageAttachment, SendMessageOptions, ImapError } from '../../../../..';
+import { AppMessage, ImapError, MessageAttachment, SendMessageOptions } from '../../../../..';
 
 interface ImapDataServiceConfig {
     options: ImapSimpleOptions;
@@ -104,7 +104,12 @@ export class ImapDataService {
         });
     }
 
-    // Flag `safely` determines behaviour which immediately closes connections and interrupts sending request in the queue
+    /**
+     * Closes the imap connection and unsubscribe all listeners.
+     *
+     * @param safely Flag `safely` determines behaviour which immediately
+     *      closes connections and interrupts sending request in the queue.
+     */
     async disconnect(safely = true): Promise<void> {
         const unwrappedImap = await this.getUnwrappedImap();
 
@@ -144,8 +149,9 @@ export class ImapDataService {
         const unwrappedImap = await this.getUnwrappedImap();
         unwrappedImap.on('mail', handler);
 
-        // This part emulates default behavior of onNewMail callback on imap-simple lib
-        // However, it was moved her to have a possibility to subscribe to getting messages not only when you create client.
+        // This part emulates default behavior of onNewMail callback on the imap-simple lib
+        // However, it was put here to have a possibility to subscribe
+        // _ on messages not only when you create a client.
         const criteria = ['ALL'];
         const newMessages = await this.search(criteria);
         if (newMessages.length) {
