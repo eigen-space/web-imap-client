@@ -166,8 +166,15 @@ export class ImapDataService {
         };
     }
 
-    // This event will be fired with some unexpected error or ECONNRESET, when a server closes the connection.
-    // Otherwise, the connection to service supported by keepalive policy.
+    /**
+     * Allows to subscribe on errors.
+     * These errors are some unexpected errors or ECONNRESET,
+     * when a server closes the connection.
+     *
+     * In other cases, the connection keeps going on according to keepalive policy.
+     *
+     * @param handler An error handler.
+     */
     async onError(handler: ErrorHandler): Promise<Unsubscriber> {
         const client = await this.getImapClient();
         client.on('error', handler);
