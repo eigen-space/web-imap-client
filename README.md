@@ -9,6 +9,7 @@ This is email adapter service.
 
 # Why do we have that dependencies?
 
+* `@eigenspace/utils` - used for logging.
 * `nodemailer` - to send emails.
 * `tmp` - to temporary create files to upload them to enabler.
 * `imap-simple` - wrapper for imap protocol to fetch emails.
