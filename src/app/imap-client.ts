@@ -9,6 +9,7 @@ import {
 import { URL } from 'url';
 import { SendMessageOptions } from './common/types/send-message-options';
 import { Logger, LoggingLevelType } from '@eigenspace/utils';
+import { Config } from './common/types/config';
 
 interface ConnectionConfig {
     user: string;
@@ -21,20 +22,14 @@ interface ConnectionConfig {
     debug?: (info: string) => void;
 }
 
-interface EmailConfig {
-    url: string;
-    mailBox?: string;
-    onNewEmail?: (numberOfNewMessages: number) => void | Promise<void>;
-    isDebugMode?: boolean;
-}
-
 export class ImapClient {
+    private static DEFAULT_RECONNECT_TIMEOUT = 1000 * 60 * 60;
     private imapDataService: ImapDataService;
     private readonly connectionConfig: ConnectionConfig;
 
     private logger = new Logger({ logLevel: LoggingLevelType.DEBUG, prefix: 'ImapClient' });
 
-    constructor(config: EmailConfig) {
+    constructor(config: Config) {
         const url = new URL(config.url);
         const tls = url.protocol === 'imaps:';
         const noop = (): void => {};
@@ -51,6 +46,7 @@ export class ImapClient {
         };
 
         this.imapDataService = this.createImapService();
+        this.establishReconnect(config.reconnectTimeout);
     }
 
     get user(): string {
@@ -98,12 +94,20 @@ export class ImapClient {
         const options = {
             imap: {
                 ...otherOptions,
-                tlsOptions: { rejectUnauthorized: false },
-                authTimeout: 3000
+                tlsOptions: { rejectUnauthorized: false }
             },
             onmail: onNewEmail
         };
 
         return new ImapDataService({ options, mailBox: this.connectionConfig.mailBox });
+    }
+
+    // We do reconnect in case server closes connection
+    // For now we cannot surely determine this event to do reconnect only os server connection close
+    private establishReconnect(timeout = ImapClient.DEFAULT_RECONNECT_TIMEOUT): void {
+        setInterval(async () => {
+            await this.reconnect();
+            this.logger.log('reconnected after timeout', timeout);
+        }, timeout);
     }
 }
