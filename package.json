@@ -1,6 +1,6 @@
 {
     "name": "@eigenspace/web-imap-client",
-    "version": "1.0.6-dev",
+    "version": "1.0.7",
     "description": "Imap client for fetching emails",
     "main": "index.ts",
     "license": "MIT",
