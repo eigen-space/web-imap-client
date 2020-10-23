@@ -102,12 +102,18 @@ export class ImapClient {
         return new ImapDataService({ options, mailBox: this.connectionConfig.mailBox });
     }
 
-    // We do reconnect in case server closes connection
-    // For now we cannot surely determine this event to do reconnect only os server connection close
+    /**
+     * Establish a connection in case it was closed by server
+     */
     private establishReconnect(timeout = ImapClient.DEFAULT_RECONNECT_TIMEOUT): void {
-        setInterval(async () => {
-            await this.reconnect();
-            this.logger.log('reconnected after timeout', timeout);
-        }, timeout);
+        // For now we cannot surely determine the event when server closes connection
+        // So we do reconnect every constant time
+        setInterval(
+            async () => {
+                await this.reconnect();
+                this.logger.log('reconnected after timeout', timeout);
+            },
+            timeout
+        );
     }
 }
