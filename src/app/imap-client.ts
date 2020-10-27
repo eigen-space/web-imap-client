@@ -123,7 +123,7 @@ export class ImapClient {
     /**
      * Reconnects after socket timeout error.
      * Actually the error is not reproducible. We leave it for safety if it suddenly happens.
-     * Also there is a issue on GitHub with error but no any steps to reproduce and
+     * Also there is an issue on GitHub with the error but there are no steps to reproduce and
      * no evidence it is actually happens because of IMAP.
      * (https://github.com/mscdex/node-imap/issues/366)
      */
