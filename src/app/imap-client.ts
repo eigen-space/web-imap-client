@@ -10,6 +10,7 @@ import { URL } from 'url';
 import { SendMessageOptions } from './common/types/send-message-options';
 import { Logger, LoggingLevelType } from '@eigenspace/utils';
 import { Config } from './common/types/config';
+import { ImapError } from './common/types/imap-error';
 
 interface ConnectionConfig {
     user: string;
@@ -46,7 +47,9 @@ export class ImapClient {
         };
 
         this.imapDataService = this.createImapService();
+
         this.establishReconnect(config.reconnectTimeout);
+        this.handleSocketTimeoutError();
     }
 
     get user(): string {
@@ -115,5 +118,25 @@ export class ImapClient {
             },
             timeout
         );
+    }
+
+    /**
+     * Reconnects after socket timeout error.
+     * Actually the error is not reproducible. We leave it for safety if it suddenly happens.
+     * Also there is an issue on GitHub with the error but there are no steps to reproduce and
+     * no evidence it is actually happens because of IMAP.
+     * (https://github.com/mscdex/node-imap/issues/366)
+     */
+    private handleSocketTimeoutError(): void {
+        this.imapDataService.onError(async (error: ImapError) => {
+            if (error.code !== 'ETIMEDOUT' || error.source !== 'socket') {
+                return;
+            }
+
+            this.logger.error('got socket timeout error', error);
+            await this.reconnect();
+            this.logger.log('reconnected after socket timeout error', error);
+        });
+
     }
 }
