@@ -8,7 +8,7 @@ cache:
   directories:
     - node_modules
 script:
-  - git remote set-url origin https://$USER:$GITHUB_API_KEY@github.com/eigen-space/helper-scripts.git
+  - git remote set-url origin https://$USER:$GITHUB_API_KEY@github.com/eigen-space/web-imap-client.git
   - yarn lint && yarn build:package && yarn test:ci && npm run deploy:publish;
 before_install:
   - git checkout $TRAVIS_BRANCH
