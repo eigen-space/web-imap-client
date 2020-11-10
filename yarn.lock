@@ -230,10 +230,10 @@
   resolved "https://registry.yarnpkg.com/@eigenspace/common-types/-/common-types-0.0.20.tgz#29dba2c451ed9836fb13a13be4af30bcd82de44c"
   integrity sha512-EjHVZbzsVoere4w5mc+aOUb9beTurI5OoBfUss/cL9foWPP8p7yVtpfIK4VKdY/IbugFbO+RgqNP5nLvAEekKQ==
 
-"@eigenspace/helper-scripts@2.0.5-core":
-  version "2.0.5-core"
-  resolved "https://registry.yarnpkg.com/@eigenspace/helper-scripts/-/helper-scripts-2.0.5-core.tgz#3f004adc886e3ec0530646cef1742cc1ca3a66cc"
-  integrity sha512-nAkjYwIyTcS06NoDmqag72CVEFtOR2kljDSOWdtNLQe6l63xmJdchFaFCi0lA3O20WCP9BXTAGHUKV2DeS5oYA==
+"@eigenspace/helper-scripts@3.0.2":
+  version "3.0.2"
+  resolved "https://registry.yarnpkg.com/@eigenspace/helper-scripts/-/helper-scripts-3.0.2.tgz#5f3097531000e42c4b81838c06579566be70a775"
+  integrity sha512-+1PMLKJ4dx3lKH++Cg64wF8/6yA49mdsmJfvSFJ7OJ7QQ0Xu6Bks66yazNk1m0RRDjn8GTIeLlmtlIcwxuSqGg==
   dependencies:
     "@eigenspace/argument-parser" "1.0.2"
 

@@ -1,6 +1,6 @@
 {
     "name": "@eigenspace/web-imap-client",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "description": "Imap client for fetching emails",
     "main": "index.ts",
     "license": "MIT",
@@ -15,9 +15,9 @@
         "lint": "yarn lint:code . && yarn lint:markdown",
         "test": "jest --passWithNoTests",
         "test:ci": "yarn test --ci --coverage",
-        "deploy:publish": "node node_modules/@eigenspace/helper-scripts/scripts/ci/publish.js",
+        "deploy:publish": "node node_modules/@eigenspace/helper-scripts/scripts/ci/publish",
         "hooks:pre-push": "yarn lint && yarn test",
-        "script:update-deps-local": "node node_modules/@eigenspace/helper-scripts/scripts/project/update-deps.js",
+        "script:update-deps-local": "node node_modules/@eigenspace/helper-scripts/scripts/project/update-deps",
         "script:update-deps-remote": "npx -p @eigenspace/helper-scripts update-deps"
     },
     "husky": {
@@ -44,7 +44,7 @@
         "@eigenspace/codestyle": "latest",
         "@eigenspace/commit-linter": "latest",
         "@eigenspace/common-types": "0.0.20",
-        "@eigenspace/helper-scripts": "2.0.5-core",
+        "@eigenspace/helper-scripts": "3.0.2",
         "@types/imap-simple": "4.2.2",
         "@types/jest": "22.2.2",
         "@types/mailparser": "2.7.3",
