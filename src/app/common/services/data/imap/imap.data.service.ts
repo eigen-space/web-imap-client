@@ -88,7 +88,7 @@ export class ImapDataService {
     async setMessageLabels(source: MessageSource, labels: string | string[]): Promise<void> {
         const unwrappedImap = await this.getUnwrappedImap();
 
-        if (typeof (unwrappedImap as GmailOriginImapClient).delLabels !== 'function') {
+        if (typeof (unwrappedImap as GmailOriginImapClient).setLabels !== 'function') {
             throw new Error('Setting labels is unsupported');
         }
 
@@ -192,7 +192,7 @@ export class ImapDataService {
         return unwrappedImap.imap;
     }
 
-    private async getImapClient(shouldBeCreatedNew = false): Promise<ExtendedImapClient> {
+    async getImapClient(shouldBeCreatedNew = false): Promise<ExtendedImapClient> {
         if (!this.imapClientPromise || shouldBeCreatedNew) {
             this.imapClientPromise = this.getConnection();
         }
@@ -211,7 +211,9 @@ export class ImapDataService {
         const parser = new MailParser();
         const message = {
             info: { uid: imapMessage.attributes.uid, size: imapMessage.attributes.size },
-            headers: {},
+            headers: {
+                gmailMessageId: this.getGmailMessageId(imapMessage.attributes)
+            },
             attachments: []
         } as unknown as AppMessage;
 
@@ -239,5 +241,18 @@ export class ImapDataService {
             imapMessage.parts.forEach(part => parser.write(part.body));
             parser.end();
         });
+    }
+
+    private getGmailMessageId(attributes: OriginImap.ImapMessageAttributes): string {
+        // @ts-ignore
+        const id = attributes['x-gm-msgid'];
+        if (!id) {
+            return '';
+        }
+
+        const hexBit = 16;
+        // We use BigInt because gmail has 64-bit unsigned integer as id.
+        // Gmail use hex representation of numeric id so we convert it into hex.
+        return BigInt(id).toString(hexBit);
     }
 }
