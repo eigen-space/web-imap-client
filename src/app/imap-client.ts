@@ -19,6 +19,7 @@ interface ConnectionConfig {
     mailBox: string;
     port: number;
     tls: boolean;
+    authTimeout: number;
     onNewEmail?: (numberOfNewMessages: number) => void | Promise<void>;
     debug?: (info: string) => void;
 }
@@ -39,6 +40,7 @@ export class ImapClient {
             user: decodeURIComponent(url.username),
             password: decodeURIComponent(url.password),
             host: url.hostname,
+            authTimeout: config.authTimeout,
             port: url.port || tls ? 993 : 143,
             mailBox: config.mailBox || 'INBOX',
             tls,
