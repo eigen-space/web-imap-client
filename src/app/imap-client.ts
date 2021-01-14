@@ -19,12 +19,13 @@ interface ConnectionConfig {
     mailBox: string;
     port: number;
     tls: boolean;
+    authTimeout: number;
     onNewEmail?: (numberOfNewMessages: number) => void | Promise<void>;
     debug?: (info: string) => void;
 }
 
 export class ImapClient {
-    private static DEFAULT_RECONNECT_TIMEOUT = 1000 * 60 * 60;
+    private static DEFAULT_RECONNECT_INTERVAL = 1000 * 60 * 60;
     private imapDataService: ImapDataService;
     private readonly connectionConfig: ConnectionConfig;
 
@@ -39,6 +40,7 @@ export class ImapClient {
             user: decodeURIComponent(url.username),
             password: decodeURIComponent(url.password),
             host: url.hostname,
+            authTimeout: config.authTimeout,
             port: url.port || tls ? 993 : 143,
             mailBox: config.mailBox || 'INBOX',
             tls,
@@ -48,7 +50,7 @@ export class ImapClient {
 
         this.imapDataService = this.createImapService();
 
-        this.establishReconnect(config.reconnectTimeout);
+        this.establishReconnect(config.reconnectInterval);
         this.handleSocketTimeoutError();
     }
 
@@ -108,15 +110,15 @@ export class ImapClient {
     /**
      * Establish a connection in case it was closed by server
      */
-    private establishReconnect(timeout = ImapClient.DEFAULT_RECONNECT_TIMEOUT): void {
+    private establishReconnect(interval = ImapClient.DEFAULT_RECONNECT_INTERVAL): void {
         // For now we cannot surely determine the event when server closes connection
         // So we do reconnect every constant time
         setInterval(
             async () => {
                 await this.reconnect();
-                this.logger.log('reconnected after timeout', timeout);
+                this.logger.log('reconnected after', interval);
             },
-            timeout
+            interval
         );
     }
 
@@ -137,6 +139,5 @@ export class ImapClient {
             await this.reconnect();
             this.logger.log('reconnected after socket timeout error', error);
         });
-
     }
 }

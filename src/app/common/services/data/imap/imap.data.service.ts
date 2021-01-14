@@ -116,6 +116,7 @@ export class ImapDataService {
         unwrappedImap.removeAllListeners();
         this.mailHandlers = [];
         this.errorHandlers = [];
+        this.logger.info('disconnect', 'cleared listeners');
 
         unwrappedImap.closeBox(err => {
             if (err) {
@@ -140,25 +141,22 @@ export class ImapDataService {
         await this.disconnect(safely);
 
         this.imapClientPromise = this.getImapClient(true);
+        this.logger.log('reconnect', 'created new client');
 
         mailListeners.forEach(l => this.onNewMailReceived(l));
         errorListeners.forEach(l => this.onError(l));
+        this.logger.info('reconnect', 'restored listeners');
     }
 
     async onNewMailReceived(handler: NewEmailHandler): Promise<Unsubscriber> {
         const unwrappedImap = await this.getUnwrappedImap();
         unwrappedImap.on('mail', handler);
 
-        // This part emulates default behavior of onNewMail callback on the imap-simple lib
-        // However, it was put here to have a possibility to subscribe
-        // _ on messages not only when you create a client.
-        const criteria = ['ALL'];
-        const newMessages = await this.search(criteria);
-        if (newMessages.length) {
-            unwrappedImap.emit('mail', newMessages.length);
-        }
-
         this.mailHandlers.push(handler);
+        this.logger.info('onNewMailReceived', 'saved handler');
+
+        // This part emulates default behavior of onNewMail callback on the imap-simple lib
+        unwrappedImap.emit('mail');
 
         return () => {
             this.mailHandlers = this.mailHandlers.filter(h => h !== handler);
@@ -180,6 +178,7 @@ export class ImapDataService {
         client.on('error', handler);
 
         this.errorHandlers.push(handler);
+        this.logger.info('onError', 'saved handler');
 
         return () => {
             this.errorHandlers = this.errorHandlers.filter(h => h !== handler);
