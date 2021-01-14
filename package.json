@@ -1,0 +1,63 @@
+{
+    "name": "@eigenspace/web-imap-client",
+    "version": "1.0.13",
+    "description": "Imap client for fetching emails",
+    "main": "index.ts",
+    "license": "MIT",
+    "scripts": {
+        "build:package": "yarn compile && yarn copy:assets",
+        "build:tsdoc": "typedoc",
+        "compile": "tsc",
+        "copy:assets": "ts-node dev/scripts/copy-assets.ts",
+        "lint:code": "eslint --ext .js,.ts",
+        "lint:fix": "yarn lint:code --fix",
+        "lint:markdown": "node ./node_modules/@eigenspace/codestyle/scripts/markdown-lint.js",
+        "lint": "yarn lint:code . && yarn lint:markdown",
+        "test": "jest --passWithNoTests",
+        "test:ci": "yarn test --ci --coverage",
+        "deploy:publish": "npx -p @eigenspace/package-publisher@0.0.3 publish",
+        "hooks:pre-push": "yarn lint && yarn test && yarn build:package",
+        "script:update-deps-local": "node node_modules/@eigenspace/helper-scripts/scripts/project/update-deps",
+        "script:update-deps-remote": "npx -p @eigenspace/helper-scripts update-deps"
+    },
+    "husky": {
+        "hooks": {
+            "pre-push": "yarn hooks:pre-push",
+            "pre-commit": "lint-staged",
+            "commit-msg": "commit-linter --message=COMMIT_MESSAGE"
+        }
+    },
+    "lint-staged": {
+        "*.{ts,tsx}": [
+            "yarn lint:fix",
+            "git add"
+        ]
+    },
+    "dependencies": {
+        "imap-simple": "5.0.0",
+        "mailparser": "2.8.1",
+        "nodemailer": "6.4.11",
+        "tmp": "0.2.1",
+        "@eigenspace/utils": "1.2.40"
+    },
+    "devDependencies": {
+        "@eigenspace/codestyle": "latest",
+        "@eigenspace/commit-linter": "latest",
+        "@eigenspace/common-types": "0.0.20",
+        "@eigenspace/helper-scripts": "3.0.2",
+        "@types/imap-simple": "4.2.2",
+        "@types/jest": "22.2.2",
+        "@types/mailparser": "2.7.3",
+        "@types/nodemailer": "6.4.0",
+        "@types/tmp": "0.2.0",
+        "eslint": "5.16.0",
+        "eslint-plugin-eigenspace-script": "latest",
+        "husky": "2.3.0",
+        "jest": "24.7.1",
+        "lint-staged": "8.1.7",
+        "ts-node": "8.6.2",
+        "ts-jest": "24.0.2",
+        "ts-loader": "6.2.1",
+        "typescript": "3.7.4"
+    }
+}
